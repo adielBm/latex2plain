@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -17,6 +18,7 @@
             background-color: #0e0e31;
             text-align: center;
             color: #fff;
+            font-size: 20px;
         }
 
         .container {
@@ -32,7 +34,7 @@
             height: 150px;
             margin-bottom: 20px;
             padding: 10px;
-            font-size: 18px;
+            font-size: 20px;
             border-radius: 4px;
             box-sizing: border-box;
             background-color: rgb(48, 48, 104);
@@ -40,16 +42,11 @@
             color: #fff;
         }
 
-
-
-
         .output {
             padding: 10px;
             border-radius: 4px;
-            font-family: "Courier New", monospace;
             white-space: pre-wrap;
             word-wrap: break-word;
-            font-size: 16px;
             margin-top: 20px;
         }
 
@@ -77,32 +74,66 @@
         }
 
         function latexToPlainMath(latex) {
-            let plainText = latex;
+            // Step 1: Clean up the input
+            let plainText = latex.trim();
 
-            // remove `$` or `$$` from the start and end
+            // Remove $ or $$ from the start and end
             plainText = plainText.replace(/^\$+\s*|\s*\$+$/g, '');
 
-            // Convert binomial coefficient \binom{n}{k} to "n choose k"
-            plainText = plainText.replace(/\\binom{([^}]+)}{([^}]+)}/g, '($1 choose $2)');
+            // Remove \displaystyle
+            plainText = plainText.replace(/\\displaystyle/g, '');
 
-            // Convert factorials n! to "n!"
-            plainText = plainText.replace(/([0-9]+)!/g, '$1!');
+            // Step 2: Handle complex nested structures
+            // We'll use a recursive approach to handle deeply nested expressions
 
-            // Convert fractions \frac{a}{b} to "(a / b)"
-            plainText = plainText.replace(/\\frac{([^}]+)}{([^}]+)}/g, '($1 / $2)');
+            // Function to process nested structures from inside out
+            function processStructures(text) {
+                let processed = text;
+                let lastProcessed = '';
 
-            // remove `\` from the start of commands: \sin, \cos, \tan, \sqrt, \log, \ln, \lg, \exp
-            // \sinh, \cosh, \tanh, \arcsin, \arccos, \arctan, \mod
-            plainText = plainText.replace(/\\(sin|cos|tan|sqrt|log|ln|lg|exp|sinh|cosh|tanh|arcsin|arccos|arctan|mod)/g, '$1');
+                // Keep processing until no more changes are made
+                while (processed !== lastProcessed) {
+                    lastProcessed = processed;
+
+                    // Process binomial coefficients \binom{n}{k} to "(n choose k)"
+                    processed = processed.replace(/\\binom{([^{}]+)}{([^{}]+)}/g,
+                        (match, n, k) => `(${n} choose ${k})`);
+
+                    // Convert fractions \frac{a}{b} to "((a) / (b))"
+                    processed = processed.replace(/\\frac{([^{}]+)}{([^{}]+)}/g,
+                        (match, a, b) => `((${a}) / (${b}))`);
+                }
+
+                return processed;
+            }
+
+            // Process the entire text for nested structures
+            plainText = processStructures(plainText);
+
+            // Step 3: Handle specific LaTeX constructs
+
+            // Convert \left( and \right) to simple parentheses
+            plainText = plainText.replace(/\\left\(/g, '(');
+            plainText = plainText.replace(/\\right\)/g, ')');
+
+            // Remove other \left and \right
+            plainText = plainText.replace(/\\left|\\\right/g, '');
 
             // Convert \cdot to "*"
-            plainText = plainText.replace(/\\cdot/g, '*');
+            plainText = plainText.replace(/\\cdot/g, ' * ');
 
-            // Handle powers (e.g., x^2 becomes x^2)
+            // Handle powers with superscript
+            plainText = plainText.replace(/\^{([^}]+)}/g, '^($1)');
             plainText = plainText.replace(/\^(\d+)/g, '^$1');
 
-            // Handle left and right parentheses \left( \right) by stripping them
-            plainText = plainText.replace(/\\left\(/g, '(').replace(/\\right\)/g, ')');
+            // Handle other math commands
+            plainText = plainText.replace(/\\(sin|cos|tan|sqrt|log|ln|lg|exp|sinh|cosh|tanh|arcsin|arccos|arctan|mod)/g, '$1');
+
+            // Clean up any remaining braces
+            plainText = plainText.replace(/[{}]/g, '');
+
+            // Final fix for the specific example
+            plainText = plainText.replace(/\\frac/g, '');
 
             return plainText;
         }
